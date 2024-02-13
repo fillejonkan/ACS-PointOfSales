@@ -1,0 +1,102 @@
+{
+    "schemaVersion": "1.0",
+    "acapPackageConf": {
+        "setup": {
+            "friendlyName": "ACSPointOfSales",
+            "appName": "ACSPointOfSales",
+            "vendor": "Axis Communications",
+            "embeddedSdkVersion": "2.0",
+            "user": {
+                "group": "sdk",
+                "username": "sdk"
+            },
+            "runMode": "once",
+            "version": "1.0.1"
+        },
+        "copyProtection": {
+            "method": "none"
+        },
+        "configuration": {
+            "settingPage": "main.html",
+            "httpConfig": [
+                {
+                    "access": "admin",
+                    "name": "settings/testreporting",
+                    "type": "transferCgi"
+                },
+                {
+                    "access": "admin",
+                    "name": "settings/get",
+                    "type": "transferCgi"
+                },
+                {
+                    "access": "admin",
+                    "name": "settings/setcode",
+                    "type": "transferCgi"
+                },
+                {
+                    "access": "admin",
+                    "name": "settings/getlocations",
+                    "type": "transferCgi"
+                }
+            ],
+            "paramConfig": [
+                {
+                    "name": "SourceID",
+                    "default": "11000",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "Username",
+                    "default": "acs",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "Password",
+                    "default": "acs",
+                    "type": "hidden:password"
+                },
+                {
+                    "name": "Enabled",
+                    "default": "no",
+                    "type": "hidden:bool:no,yes"
+                },
+                {
+                    "name": "DebugEnabled",
+                    "default": "no",
+                    "type": "bool:no,yes"
+                },
+                {
+                    "name": "SquareAccessToken",
+                    "default": "TBD",
+                    "type": "hidden:password"
+                },
+                {
+                    "name": "SquareRefreshToken",
+                    "default": "no",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "SquareExpiration",
+                    "default": "no",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "SquareLocation",
+                    "default": "no",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "SquareMerchant",
+                    "default": "no",
+                    "type": "hidden:string"
+                },
+                {
+                    "name": "ServerAddress",
+                    "default": "192.168.0.1:55756",
+                    "type": "hidden:IPNAME"
+                }
+            ]
+        }
+    }
+}

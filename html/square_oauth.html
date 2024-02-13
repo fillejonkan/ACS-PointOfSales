@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--#set var="scriptPath" val="/usr/html/bin/devtools.sh" -->
+<!--#set var="app" val="ACSPointOfSales" -->
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible"/>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>ACS Point Of Sales</title>
+<script src="jquery-1.10.2.js"></script>
+<script src="jquery.ui.core.js"></script>
+<script src="jquery.ui.widget.js"></script>
+<script src="jquery.ui.tabs.js"></script>
+<script src="camera_services.1.0.0.js"></script>
+</head>
+
+<body>
+
+<h1 id="top">Square Oauth 2.0</h1>
+
+<br>
+<br>
+<br>
+<br>
+
+<h1 id="status">OK</h1>
+<h2 id="details">Test</h2>
+<h3 id="redir"></h3>
+
+<script>
+
+
+function returnToMain()
+{
+    $("#redir").text("Redirecting in one second...")
+    setTimeout(function() {
+      window.location.replace("main.html");
+    }, 1000);
+}
+
+/** @file square_oauth.html
+ * @Brief Handle oauth callback from Square
+ *
+ */
+
+/**
+ * Callback for when document is ready.
+ *
+ * Get VAPIX event declarations and application parameters.
+ * Use this to populate settings / menus.
+ *
+ * @return No return value.
+ */
+$(document).ready( function() {
+    let querystring = window.location.search;
+    console.log(querystring);
+
+    let urlParams = new URLSearchParams(querystring);
+
+    let code          = urlParams.get('code');
+    let response_type = urlParams.get('response_type');
+    let state         = urlParams.get('state');
+    let error         = urlParams.get('error');
+    let error_desc    = urlParams.get('error_description');
+
+    console.log(code);
+    console.log(response_type);
+    console.log(state);
+    console.log(error);
+    console.log(error_desc);
+
+    if (error != null) {
+        $("#status").text("Failed to authenticate to Square");
+        $("#details").text(error);
+    } else if (code != null) {
+        $("#status").text("OK!");
+
+        setCode(code);        
+    } else {
+        $("#status").text("No code received");
+        returnToMain();
+    }
+});
+
+
+/**
+ * Alert if App is non responsive.
+ *
+ * @return No return value.
+ */
+function noResponseError()
+{
+  $("#status").text("No response from application.\n\nCheck if the application is running.");
+  returnToMain();
+}
+
+
+
+/**
+ * Callback function for Test Reporting button.
+ * Invoke the test reporting CGI which will send test data according to current
+ * configuration. Report back with green/red flashing label on status.
+ *
+ * @return No return value.
+ */
+function setCode(code)
+{
+    let setcode_url = "settings/setcode?code=" + encodeURIComponent(code);
+
+    $.ajax({
+        type: "GET",
+        url: setcode_url,
+        dataType: "xml",
+        cache: false,
+        success: function( responseData ){
+            console.log("Response OK for setcode");
+
+            $("#details").text("Succesfully received auth from Square");
+
+            returnToMain();
+        },
+        error: noResponseError
+    });
+}
+
+</script>
+
+</body>
+</html>

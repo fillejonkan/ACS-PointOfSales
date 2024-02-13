@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<!--#set var="scriptPath" val="/usr/html/bin/devtools.sh" -->
+<!--#set var="app" val="ACSPointOfSales" -->
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible"/>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>ACS Point Of Sales</title>
+<script src="jquery-1.10.2.js"></script>
+<script src="jquery.ui.core.js"></script>
+<script src="jquery.ui.widget.js"></script>
+<script src="jquery.ui.tabs.js"></script>
+<script src="camera_services.1.0.0.js"></script>
+<link rel="stylesheet" type="text/css" href="./style.css" />
+</head>
+
+<body>
+
+
+<div class="header"> 
+<div class="logo"></div>
+<h1>ACS Point Of Sales</h1>
+</div>
+
+<br>
+<br>
+<br>
+<br>
+
+<p>
+<div class="settings-menu" id="settings" style="visibility: visible;">
+    <div id="settings-panel" style="width: 1659px;">
+      <div class="settings-item" style="height: 580px; width: 45%; resize: none">
+        <p><h1>Square Configuration</h1></p>
+        <p><span size="40">Status</span><span id="square_conn_status" style="visibility: hidden; color: green">Connected</span></p>
+        <p><span>Location</span><select id="apps_dropdown" required></select></p>     
+        <p><span></span><input type="button" class="SLBtn" onclick="saveSquareData()" id="saveSquareData" size="40" value="Save Square Data"></p>
+        <p><span id=square_save_status style="visibility: hidden; color: green">Square saved</span></p>
+        <p><span></span><input type="button" class="SLBtn" onclick="squareAuthenticate()" id="square_auth" size="40" value="Edit Square Account"></p>
+      </div>
+
+      <div class="settings-item" style="height: 580px; width: 35%; resize: none;">
+        <p>
+        <h1>ACS Reporting configuration</h1>
+        <p><span>Enabled</span><input type="checkbox" id="acs_enabled" size="40"></p>
+        <p><span>Server Address</span><input type="text" class="SLInput" id="ServerAddress" size="40"></p>
+        <p><span>Username</span><input type="text" class="SLInput" id="Username" size="40"></p>
+        <p><span>Password</span><input type="password" class="SLInput" id="Password" size="40"></p>
+        <p><span>Source ID</span><input type="text" class="SLInput" id="SourceID" size="40"></p>
+        <p><span id="acs_save_status" style="visibility: hidden; color: green"></span><input type="button" class="SLBtn" onclick="saveAllACS()" id="SaveAllACS" size="40" value="Save ACS"></p>
+        <p><span id="reporting_test_status" style="visibility: hidden; color: green"></span><input type="button" class="SLBtn" onclick="testReporting()" id="TestReporting()" size="40" value="Test Reporting"></p>
+        </p>
+      </div>
+       
+      </div>
+</div>
+
+<script>
+
+/** @file main.html
+ * @Brief HTML front for ACS POS (Square) Application
+ *
+ */
+
+/**
+ * Callback for when document is ready.
+ *
+ * Get VAPIX event declarations and application parameters.
+ * Use this to populate settings / menus.
+ *
+ * @return No return value.
+ */
+$(document).ready( function() {
+
+    getLocations();  
+
+    let menu              = document.getElementById("settings");
+    menu.style.visibility = "visible";
+});
+
+/**
+ * Fix menu formatting.
+ *
+ * @return No return value.
+ */
+function initSettingsMenu() {
+  let menuWidth = 10;
+  let itemMaxHeight = 0;
+  let itemHeight;
+  $(".settings-item").each(function() {
+    menuWidth += $(this).outerWidth(true);
+    itemHeight = $(this)[0].offsetHeight;
+
+    if(itemHeight > itemMaxHeight) {
+      itemMaxHeight = itemHeight;
+    }
+  });
+  $("#settings-panel").width(menuWidth);
+  $(".settings-item").height(itemMaxHeight);
+}
+
+/**
+ * Alert if App is non responsive.
+ *
+ * @return No return value.
+ */
+function noResponseError()
+{
+  alert("No response from application.\n\nCheck if the application is running.");
+}
+
+/**
+ * Set Server address input box from parameter value.
+ *
+ * @param acs_ip The ServerAddress value stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getServerAddressFromParam(acs_ip) {
+  $("#ServerAddress").val(acs_ip);
+}
+
+/**
+ * Set Source ID input box from parameter value.
+ *
+ * @param en The SourceID value stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getSourceIDFromParam(source_id) {
+  $("#SourceID").val(source_id);
+}
+
+/**
+ * Set Username input box from parameter value.
+ *
+ * @param username The Username value stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getUsernameFromParam(username) {
+  $("#Username").val(username);
+}
+
+/**
+ * Set Password input box from parameter value.
+ *
+ * @param password The Password value stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getPasswordFromParam(password) {
+  $("#Password").val(password);
+}
+
+/**
+ * Set Enabled checkbox from parameter value.
+ *
+ * @param en The Enabled value stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getEnabledFromParam(en) {
+  if (en === 'yes') {
+    $("#acs_enabled").attr("checked", "checked");
+  } else {
+    $("#acs_enabled").removeAttr('checked');
+  }
+}
+
+/**
+ * Set Analytic dropdown from parameter value.
+ *
+ * @param name The Analytic stored as parameter in the camera.
+ *
+ * @return No return value.
+ */
+function getSquareLocationFromParam(name)
+{
+  if (!Boolean(name)) {
+    return;
+  }
+
+  let opt = $('#apps_dropdown').find('option[value="'+ name +'"]');
+
+  if (opt) {
+    opt.attr('selected','selected');
+    opt.change();
+  }
+}
+
+/**
+ * Callback function for Save ALL ACS button. Save values and update
+ * a flashing status label red/green depending on success.
+ *
+ * @return No return value.
+ */
+function saveAllACS() {
+  let label = document.getElementById("acs_save_status");
+
+  let enabled = "no"
+  if($("#acs_enabled").is(":checked")) {
+    enabled = "yes";
+  }
+
+  let param_url = 
+    '/axis-cgi/admin/param.cgi?action=update&' 
+    + 'root.ACSPointOfSales.ServerAddress=' + $("#ServerAddress").val().trim() + '&'
+    + 'root.ACSPointOfSales.SourceID='      + $("#SourceID").val().trim() + '&'
+    + 'root.ACSPointOfSales.Username=' + encodeURIComponent($("#Username").val().trim()) + '&'
+    + 'root.ACSPointOfSales.Password=' + encodeURIComponent($("#Password").val().trim()) + '&'
+    + 'root.ACSPointOfSales.Enabled=' + enabled;
+
+  $.ajax({
+    type: "GET",
+    url: param_url,
+    cache: false,
+    success: function( responseData ){
+      label.style.color = 'green';
+      label.innerHTML   = "Saved OK";
+
+      label.style.visibility = 'visible';
+
+      setTimeout(function() {
+        label.style.visibility = 'hidden';
+      }, 3000);
+    },
+    error: function( responseData ){
+      label.style.color = 'red';
+      label.innerHTML   = "Error Saving";
+
+      label.style.visibility = 'visible';
+
+      setTimeout(function() {
+        label.style.visibility = 'hidden';
+      }, 3000);
+    }
+  });
+}
+
+function squareAuthenticate()
+{
+  let ret = confirm("This will revoke current connection, proceed?");
+  
+  if (ret == true) {
+    console.log("You pressed OK!");
+    window.location.href = "https://connect.squareup.com/oauth2/authorize?client_id=sq0idp-bWA2pNYKzlUaMyJ6_XIcKg&scope=MERCHANT_PROFILE_READ+CUSTOMERS_READ+ORDERS_READ&state=8sandbox-sq0csb-wFXAjq6EBcFBw9sTZfDrrDi3JaawAYEWTzZMmSxclpo&session=false;"
+  } else {
+    console.log("You pressed Cancel!");
+  } 
+}
+
+/**
+ * Callback function for Save ALL Analytics button. Save values and update
+ * a flashing status label red/green depending on success.
+ *
+ * @return No return value.
+ */
+function saveSquareData()
+{
+  /* Don't bother if user has not made valid active selections */
+  let label = document.getElementById("square_save_status");
+
+  let location = $("#apps_dropdown :selected").val();
+
+  console.log("Got selected location: " + location)
+
+  if (location == "place") {
+    label.style.color = 'red';
+    label.innerHTML   = "Make valid selection";
+    label.style.visibility = 'visible';
+    setTimeout(function() {
+      label.style.visibility = 'hidden';
+    }, 3000);
+    return;
+  }
+
+  let param_url = 
+    '/axis-cgi/admin/param.cgi?action=update&' 
+    + 'root.ACSPointOfSales.SquareLocation=' + encodeURIComponent(location)
+  
+  $.ajax({
+    type: "GET",
+    url: param_url,
+    cache: false,
+    success: function( responseData ){
+      label.style.color = 'green';
+      label.innerHTML   = "Square Data Saved";
+
+      label.style.visibility = 'visible';
+
+      setTimeout(function() {
+        label.style.visibility = 'hidden';
+      }, 3000);
+    },
+    error: function( responseData ){
+      label.style.color = 'red';
+      label.innerHTML   = "Error saving Square Information"
+
+      label.style.visibility = 'visible';
+
+      setTimeout(function() {
+        label.style.visibility = 'hidden';
+      }, 3000);
+    }
+  });  
+}
+
+/**
+ * Callback function for Test Reporting button.
+ * Invoke the test reporting CGI which will send test data according to current
+ * configuration. Report back with green/red flashing label on status.
+ *
+ * @return No return value.
+ */
+function testReporting()
+{
+ $.ajax({
+    type: "GET",
+    url: "settings/testreporting",
+    dataType: "xml",
+    cache: false,
+    success: function( responseData ){
+      var Parameters = $(responseData).find("param");
+      let label      = document.getElementById("reporting_test_status");
+
+      console.log(responseData);
+     
+      if (Parameters[0].getAttribute("value") === "Success") {
+        label.style.color = 'green';
+        label.innerHTML   = "Reporting OK";
+      } else {
+        label.style.color = 'red';
+        label.innerHTML   = Parameters[1].getAttribute("value");
+      }
+
+      label.style.visibility = 'visible';
+
+      setTimeout(function() {
+        label.style.visibility = 'hidden';}, 3000);
+    },
+    error: noResponseError
+  });
+}
+
+
+/**
+ * Called initial when document is ready. Use the settings/get CGI to get all
+ * the parameters. Call the different function that will populate dropdowns etc.
+ *
+ * @return No return value.
+ */
+function getLocations()
+{
+ $.ajax({
+    type: "GET",
+    url: "settings/getlocations",
+    dataType: "xml",
+    cache: false,
+    success: function( responseData ) {
+      let label  = document.getElementById("square_conn_status");
+
+      let result = $(responseData).find("result")[0].getAttribute("status");
+
+      if (result != "Success") {
+        label.style.color = 'red';
+        label.innerHTML   = result;
+        label.style.visibility = 'visible';
+
+        getAllParameters();
+      } else {
+        let merchant_name = $(responseData).find("merchant")[0].getAttribute("name");
+        label.style.color = 'green';
+        label.innerHTML   = 'Connected to: ' + merchant_name;
+        label.style.visibility = 'visible';
+      }
+
+      let locations = $(responseData).find("param");
+
+      /* Fill apps dropdown with placeholder and items */
+      $('#apps_dropdown').empty();
+      
+      $('#apps_dropdown').append('<option value=place disabled selected>Pick Location</option>');
+
+      for (i = 0; i < locations.length; i++) {
+        let ID   = decodeURIComponent(locations[i].getAttribute("ID"));
+        let Name = decodeURIComponent(locations[i].getAttribute("Name"));
+
+        console.log("Got location name=" + Name + " ID=" + ID);
+        $('#apps_dropdown').append('<option value='+ID+'>'+Name+'</option>');
+      }
+
+      getAllParameters();
+    },
+    error: noResponseError
+  });
+}
+
+/**
+ * Called initial when document is ready. Use the settings/get CGI to get all
+ * the parameters. Call the different function that will populate dropdowns etc.
+ *
+ * @return No return value.
+ */
+function getAllParameters()
+{
+ $.ajax({
+    type: "GET",
+    url: "settings/get",
+    dataType: "xml",
+    cache: false,
+    success: function( responseData ){
+      let Parameters = $(responseData).find("param");
+
+      let acs_ip    = decodeURIComponent(Parameters[0].getAttribute("value"));
+      let source_id = decodeURIComponent(Parameters[1].getAttribute("value")); 
+      let username  = decodeURIComponent(Parameters[2].getAttribute("value"));
+      let password  = decodeURIComponent(Parameters[3].getAttribute("value"));
+      let en        = decodeURIComponent(Parameters[4].getAttribute("value"));
+      let debug_en  = decodeURIComponent(Parameters[5].getAttribute("value"));
+      let location  = decodeURIComponent(Parameters[6].getAttribute("value"));
+
+      /* First time population of dropdowns from parameters */
+      getSquareLocationFromParam(location)
+
+      initSettingsMenu();
+
+      getServerAddressFromParam(acs_ip);
+      getSourceIDFromParam(source_id);
+      getUsernameFromParam(username);
+      getPasswordFromParam(password);
+      getEnabledFromParam(en);
+    },
+    error: noResponseError
+  });
+}
+
+</script>
+
+</body>
+</html>
